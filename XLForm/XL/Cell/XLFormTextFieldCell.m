@@ -138,7 +138,28 @@ NSString *const XLFormTextFieldLengthPercentage = @"textFieldLengthPercentage";
 
     self.textLabel.text = ((self.rowDescriptor.required && self.rowDescriptor.title && self.rowDescriptor.sectionDescriptor.formDescriptor.addAsteriskToRequiredRowsTitle) ? [NSString stringWithFormat:@"%@*", self.rowDescriptor.title] : self.rowDescriptor.title);
 
-    self.textField.text = self.rowDescriptor.value ? [self.rowDescriptor displayTextValue] : self.rowDescriptor.noValueDisplayText;
+    if (self.rowDescriptor.valueFormatter != nil) {
+        
+        NSString *errorDescription = nil;
+        NSString *objectValue = nil;
+        
+        if ([self.rowDescriptor.valueFormatter getObjectValue:&objectValue forString:self.textField.text errorDescription:&errorDescription]) {
+            
+            if (objectValue != nil) {
+            
+                NSString *formattedValue = [self.rowDescriptor.valueFormatter stringForObjectValue:objectValue];
+                self.textField.text = formattedValue;
+                
+            } else {
+                
+                self.textField.text = [self.rowDescriptor displayTextValue];
+            }
+        }
+        
+    } else {
+    
+        self.textField.text = self.rowDescriptor.value ? [self.rowDescriptor displayTextValue] : self.rowDescriptor.noValueDisplayText;
+    }
     [self.textField setEnabled:!self.rowDescriptor.isDisabled];
     self.textField.textColor = self.rowDescriptor.isDisabled ? [UIColor grayColor] : [UIColor blackColor];
     self.textField.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
@@ -276,7 +297,15 @@ NSString *const XLFormTextFieldLengthPercentage = @"textFieldLengthPercentage";
     
     // losing input, replace the text field with the formatted value
     if (self.rowDescriptor.valueFormatter) {
-        self.textField.text = [self.rowDescriptor.value displayText];
+
+        NSString *errorDescription = nil;
+        NSString *objectValue = nil;
+        
+        if ([self.rowDescriptor.valueFormatter getObjectValue:&objectValue forString:textField.text errorDescription:&errorDescription]) {
+            
+            NSString *formattedValue = [self.rowDescriptor.valueFormatter stringForObjectValue:objectValue];
+            self.textField.text = formattedValue;
+        }
     }
     
     [self.formViewController endEditing:self.rowDescriptor];
@@ -290,33 +319,35 @@ NSString *const XLFormTextFieldLengthPercentage = @"textFieldLengthPercentage";
     if([self.textField.text length] > 0) {
         BOOL didUseFormatter = NO;
         
-        if (self.rowDescriptor.valueFormatter && self.rowDescriptor.useValueFormatterDuringInput)
-        {
-            // use generic getObjectValue:forString:errorDescription and stringForObjectValue
-            NSString *errorDescription = nil;
-            NSString *objectValue = nil;
-            
-            if ([ self.rowDescriptor.valueFormatter getObjectValue:&objectValue forString:textField.text errorDescription:&errorDescription]) {
-                NSString *formattedValue = [self.rowDescriptor.valueFormatter stringForObjectValue:objectValue];
-                
-                self.rowDescriptor.value = objectValue;
-                textField.text = formattedValue;
-                didUseFormatter = YES;
-            }
-        }
-        
         // only do this conversion if we didn't use the formatter
         if (!didUseFormatter)
         {
             if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeNumber] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDecimal]){
-                self.rowDescriptor.value =  @([self.textField.text doubleValue]);
+                
+                NSString *errorDescription = nil;
+                NSString *objectValue = nil;
+                
+                if ([ self.rowDescriptor.valueFormatter getObjectValue:&objectValue forString:textField.text errorDescription:&errorDescription]) {
+                    
+                    self.rowDescriptor.value = objectValue;
+
+                } else {
+                
+                    self.rowDescriptor.value =  @([self.textField.text doubleValue]);
+                }
+                
             } else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeInteger]){
+                
                 self.rowDescriptor.value = @([self.textField.text integerValue]);
+                
             } else {
+                
                 self.rowDescriptor.value = self.textField.text;
             }
         }
+    
     } else {
+        
         self.rowDescriptor.value = nil;
     }
 }
